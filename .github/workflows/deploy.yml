@@ -18,9 +18,8 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch or commit of SunghoLee98/pokerogue to build"
-        default: claude/festive-davinci-49n6ht
-        required: true
+        description: "Branch or commit of SunghoLee98/pokerogue to build (default: SOURCE_REF)"
+        required: false
 
 permissions:
   contents: read
@@ -34,11 +33,23 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
+      # SOURCE_REF pins the commit of the game to build; pushing a new one redeploys.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
+        with:
+          path: cdn
+          sparse-checkout: SOURCE_REF
+      - id: source
+        run: |
+          ref="${{ inputs.ref }}"
+          [ -n "$ref" ] || ref="$(tr -d '[:space:]' < cdn/SOURCE_REF)"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          rm -rf cdn
+
       # The assets and locales submodules are checked out at the commits the game pins.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
         with:
           repository: SunghoLee98/pokerogue
-          ref: ${{ inputs.ref || 'claude/festive-davinci-49n6ht' }}
+          ref: ${{ steps.source.outputs.ref }}
           submodules: "recursive"
 
       - uses: ./.github/actions/setup-deps
